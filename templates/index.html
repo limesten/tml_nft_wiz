@@ -1,5 +1,7 @@
-{{range .}}
+{{range .AllTokenData}}
 	<p>Symbol: {{.Symbol}}</p>
 	<p>Floor price: {{.FloorPrice}}</p>
 	<p>Listed count: {{.ListedCount}}</p>
 {{end}}
+
+<p>Total price in SOL: {{.TotalPriceSol}}</p>
