@@ -5,3 +5,10 @@
 {{end}}
 
 <p>Total price in SOL: {{.TotalPriceSol}}</p>
+
+<h2>Currency rates</h2>
+{{ range $currency, $rate := .CurrencyRates }}
+	<p>Currency: {{ $currency }}</p>
+	<p>Rate: {{ $rate }}</p>
+{{end}}
+

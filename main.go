@@ -114,6 +114,9 @@ func main() {
 			totalPriceSol += tokenData.FloorPrice
 			allTokenData = append(allTokenData, tokenData)
 		}
+		baseCurrency := "SOL"
+		targetCurrencies := []string{"USD", "EUR", "GBP"}
+		currencyRates := getCurrencyRates(baseCurrency, targetCurrencies)
 
 		tmpl, err := template.ParseFiles("templates/index.html")
 		if err != nil {
@@ -122,9 +125,11 @@ func main() {
 		data := struct {
 			AllTokenData  []TokenData
 			TotalPriceSol float64
+			CurrencyRates map[string]float64
 		}{
 			AllTokenData:  allTokenData,
 			TotalPriceSol: totalPriceSol,
+			CurrencyRates: currencyRates,
 		}
 
 		err = tmpl.Execute(w, data)
@@ -132,10 +137,6 @@ func main() {
 			fmt.Println(err)
 		}
 	}
-	baseCurrency := "SOL"
-	targetCurrencies := []string{"USD", "EUR", "GBP"}
-	currencyRates := getCurrencyRates(baseCurrency, targetCurrencies)
-	fmt.Println(currencyRates)
 
 	http.HandleFunc("/", handler)
 
