@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -31,6 +32,15 @@ type ExchangeRateResponse struct {
 }
 
 var fxRatesApiKey string
+
+type apiConfig struct {
+	CurrencyRates  map[string]float64
+	Prices         map[string]float64
+	Tokens         []TokenData
+	RatesUpdatedAt time.Time
+	TotalPriceSol  float64
+	fxRatesApiKey  string
+}
 
 func getCurrencyRates(baseCurrency string, targetCurrencies []string) map[string]float64 {
 
@@ -94,6 +104,39 @@ func getTokenInfo(tokenSymbol string) TokenData {
 	return tokenData
 }
 
+func getTotalPricePerCurrency(currencyRates map[string]float64, totalPriceSol float64) map[string]float64 {
+	prices := make(map[string]float64)
+	for currency, rate := range currencyRates {
+		prices[currency] = rate * totalPriceSol
+	}
+	return prices
+}
+
+func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
+	tmpl, err := template.ParseFiles("templates/index.html")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	data := struct {
+		CurrencyRates  map[string]float64
+		Tokens         []TokenData
+		Prices         map[string]float64
+		RatesUpdatedAt time.Time
+		TotalPriceSol  float64
+	}{
+		CurrencyRates:  cfg.CurrencyRates,
+		Prices:         cfg.Prices,
+		Tokens:         cfg.Tokens,
+		RatesUpdatedAt: cfg.RatesUpdatedAt,
+		TotalPriceSol:  cfg.TotalPriceSol,
+	}
+
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
 
 func main() {
 
@@ -102,43 +145,27 @@ func main() {
 		log.Fatalf("Error loading env vars: %s\n", err)
 	}
 
+	apiCfg := apiConfig{}
+
 	fxRatesApiKey = os.Getenv("FX_RATES_API_KEY")
+	apiCfg.fxRatesApiKey = fxRatesApiKey
 
-	handler := func(w http.ResponseWriter, req *http.Request) {
-
-		tokenSymbols := []string{"tomorrowland_winter", "tomorrowland_love_unity", "the_reflection_of_love"}
-		allTokenData := []TokenData{}
-		var totalPriceSol float64
-		for _, tokenSymbol := range tokenSymbols {
-			tokenData := getTokenInfo(tokenSymbol)
-			totalPriceSol += tokenData.FloorPrice
-			allTokenData = append(allTokenData, tokenData)
-		}
-		baseCurrency := "SOL"
-		targetCurrencies := []string{"USD", "EUR", "GBP"}
-		currencyRates := getCurrencyRates(baseCurrency, targetCurrencies)
-
-		tmpl, err := template.ParseFiles("templates/index.html")
-		if err != nil {
-			fmt.Println(err)
-		}
-		data := struct {
-			AllTokenData  []TokenData
-			TotalPriceSol float64
-			CurrencyRates map[string]float64
-		}{
-			AllTokenData:  allTokenData,
-			TotalPriceSol: totalPriceSol,
-			CurrencyRates: currencyRates,
-		}
-
-		err = tmpl.Execute(w, data)
-		if err != nil {
-			fmt.Println(err)
-		}
+	tokenSymbols := []string{"tomorrowland_winter", "tomorrowland_love_unity", "the_reflection_of_love"}
+	var totalPriceSol float64
+	for _, tokenSymbol := range tokenSymbols {
+		tokenData := getTokenInfo(tokenSymbol)
+		totalPriceSol += tokenData.FloorPrice
+		apiCfg.Tokens = append(apiCfg.Tokens, tokenData)
 	}
+	baseCurrency := "SOL"
+	targetCurrencies := []string{"USD", "EUR", "GBP", "SEK"}
+	currencyRates := getCurrencyRates(baseCurrency, targetCurrencies)
+	prices := getTotalPricePerCurrency(currencyRates, totalPriceSol)
+	apiCfg.TotalPriceSol = totalPriceSol
+	apiCfg.CurrencyRates = currencyRates
+	apiCfg.Prices = prices
 
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/", apiCfg.handlerGetData)
 
 	addr := "localhost:42069"
 	log.Printf("listening to %s\n", addr)

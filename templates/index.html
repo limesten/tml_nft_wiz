@@ -1,14 +1,23 @@
-{{range .AllTokenData}}
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Currency Converter</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+	{{range .Tokens}}
 	<p>Symbol: {{.Symbol}}</p>
 	<p>Floor price: {{.FloorPrice}}</p>
 	<p>Listed count: {{.ListedCount}}</p>
-{{end}}
+	{{end}}
 
-<p>Total price in SOL: {{.TotalPriceSol}}</p>
+	<p>Total price in SOL: {{.TotalPriceSol}}</p>
 
-<h2>Currency rates</h2>
-{{ range $currency, $rate := .CurrencyRates }}
-	<p>Currency: {{ $currency }}</p>
-	<p>Rate: {{ $rate }}</p>
-{{end}}
+        {{ range $currency, $price := .Prices }}
+        <p>{{ $currency }} - {{ $price }}</p>
+        {{end}}
+</body>
 
+</html>
