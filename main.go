@@ -42,7 +42,9 @@ type apiConfig struct {
 	fxRatesApiKey  string
 }
 
-func getCurrencyRates(baseCurrency string, targetCurrencies []string) map[string]float64 {
+func (cfg *apiConfig) getCurrencyRates() {
+	baseCurrency := "SOL"
+	targetCurrencies := []string{"USD", "EUR", "GBP", "SEK"}
 
 	var requestCurrencies string
 	for i, currency := range targetCurrencies {
@@ -77,31 +79,36 @@ func getCurrencyRates(baseCurrency string, targetCurrencies []string) map[string
 		fmt.Printf("Unmarshal error: %s", err)
 	}
 
-	return exchangeRateResponse.Rates
+	prices := make(map[string]float64)
+	for currency, rate := range exchangeRateResponse.Rates {
+		prices[currency] = rate * cfg.TotalPriceSol
+	}
+	cfg.CurrencyRates = exchangeRateResponse.Rates
+	cfg.Prices = prices
 }
 
-func getTokenInfo(tokenSymbol string) TokenData {
-	url := fmt.Sprintf("https://api-mainnet.magiceden.dev/v2/collections/%s/stats", tokenSymbol)
+func (cfg *apiConfig) getTokenData() {
+	tokenSymbols := []string{"tomorrowland_winter", "tomorrowland_love_unity", "the_reflection_of_love"}
+	var totalPriceSol float64
+	for _, tokenSymbol := range tokenSymbols {
+		url := fmt.Sprintf("https://api-mainnet.magiceden.dev/v2/collections/%s/stats", tokenSymbol)
+		req, _ := http.NewRequest("GET", url, nil)
+		req.Header.Add("accept", "application/json")
+		res, _ := http.DefaultClient.Do(req)
+		defer res.Body.Close()
 
-	req, _ := http.NewRequest("GET", url, nil)
+		body, _ := io.ReadAll(res.Body)
+		var tokenData TokenData
+		err := json.Unmarshal(body, &tokenData)
+		if err != nil {
+			fmt.Printf("Err on json urmarshal: %s", err)
+		}
 
-	req.Header.Add("accept", "application/json")
-
-	res, _ := http.DefaultClient.Do(req)
-
-	defer res.Body.Close()
-
-	body, _ := io.ReadAll(res.Body)
-	var tokenData TokenData
-	err := json.Unmarshal(body, &tokenData)
-	if err != nil {
-		fmt.Printf("Err on json urmarshal: %s", err)
-		return TokenData{}
+		tokenData.FloorPrice = tokenData.FloorPrice / 1000000000
+		totalPriceSol += tokenData.FloorPrice
+		cfg.Tokens = append(cfg.Tokens, tokenData)
 	}
-
-	tokenData.FloorPrice = tokenData.FloorPrice / 1000000000
-
-	return tokenData
+	cfg.TotalPriceSol = totalPriceSol
 }
 
 func getTotalPricePerCurrency(currencyRates map[string]float64, totalPriceSol float64) map[string]float64 {
@@ -139,31 +146,15 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatalf("Error loading env vars: %s\n", err)
 	}
-
 	apiCfg := apiConfig{}
-
 	fxRatesApiKey = os.Getenv("FX_RATES_API_KEY")
 	apiCfg.fxRatesApiKey = fxRatesApiKey
-
-	tokenSymbols := []string{"tomorrowland_winter", "tomorrowland_love_unity", "the_reflection_of_love"}
-	var totalPriceSol float64
-	for _, tokenSymbol := range tokenSymbols {
-		tokenData := getTokenInfo(tokenSymbol)
-		totalPriceSol += tokenData.FloorPrice
-		apiCfg.Tokens = append(apiCfg.Tokens, tokenData)
-	}
-	baseCurrency := "SOL"
-	targetCurrencies := []string{"USD", "EUR", "GBP", "SEK"}
-	currencyRates := getCurrencyRates(baseCurrency, targetCurrencies)
-	prices := getTotalPricePerCurrency(currencyRates, totalPriceSol)
-	apiCfg.TotalPriceSol = totalPriceSol
-	apiCfg.CurrencyRates = currencyRates
-	apiCfg.Prices = prices
+	apiCfg.getTokenData()
+	apiCfg.getCurrencyRates()
 
 	http.HandleFunc("/", apiCfg.handlerGetData)
 
