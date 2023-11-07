@@ -10,8 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
-)
+	"github.com/joho/godotenv")
 
 type TokenData struct {
 	Symbol       string  `json:"symbol"`
@@ -31,8 +30,6 @@ type ExchangeRateResponse struct {
 	Rates     map[string]float64 `json:"rates"`
 }
 
-var fxRatesApiKey string
-
 type apiConfig struct {
 	CurrencyRates  map[string]float64
 	Prices         map[string]float64
@@ -41,6 +38,8 @@ type apiConfig struct {
 	TotalPriceSol  float64
 	fxRatesApiKey  string
 }
+
+var fxRatesApiKey string
 
 func (cfg *apiConfig) getCurrencyRates() {
 	baseCurrency := "SOL"
@@ -90,22 +89,29 @@ func (cfg *apiConfig) getCurrencyRates() {
 func (cfg *apiConfig) getTokenData() {
 	tokenSymbols := []string{"tomorrowland_winter", "tomorrowland_love_unity", "the_reflection_of_love"}
 	var totalPriceSol float64
+	// make better solution than just emptying the Tokens slice
+	// maybe a map instead, see if token exists, if exists - update, else append
+	cfg.Tokens = []TokenData{}
 	for _, tokenSymbol := range tokenSymbols {
 		url := fmt.Sprintf("https://api-mainnet.magiceden.dev/v2/collections/%s/stats", tokenSymbol)
 		req, _ := http.NewRequest("GET", url, nil)
 		req.Header.Add("accept", "application/json")
-		res, _ := http.DefaultClient.Do(req)
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			fmt.Printf("Api req err: %s", err)
+		}
 		defer res.Body.Close()
 
 		body, _ := io.ReadAll(res.Body)
 		var tokenData TokenData
-		err := json.Unmarshal(body, &tokenData)
+		err = json.Unmarshal(body, &tokenData)
 		if err != nil {
 			fmt.Printf("Err on json urmarshal: %s", err)
 		}
 
 		tokenData.FloorPrice = tokenData.FloorPrice / 1000000000
 		totalPriceSol += tokenData.FloorPrice
+
 		cfg.Tokens = append(cfg.Tokens, tokenData)
 	}
 	cfg.TotalPriceSol = totalPriceSol
@@ -157,6 +163,22 @@ func main() {
 	apiCfg.getCurrencyRates()
 
 	http.HandleFunc("/", apiCfg.handlerGetData)
+
+	// Refresh data every hour
+	ticker := time.NewTicker(5 * time.Minute)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <- ticker.C:
+			apiCfg.getTokenData()
+			apiCfg.getCurrencyRates()
+			case <- quit:
+			ticker.Stop()
+			return
+			}
+		}
+	}()
 
 	addr := "localhost:42069"
 	log.Printf("listening to %s\n", addr)
