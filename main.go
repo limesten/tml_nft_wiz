@@ -78,6 +78,7 @@ func (cfg *apiConfig) getCurrencyRates() {
 		fmt.Printf("Unmarshal error: %s", err)
 	}
 
+	// Todo: add SOL price to the prices map
 	prices := make(map[string]float64)
 	for currency, rate := range exchangeRateResponse.Rates {
 		prices[currency] = rate * cfg.TotalPriceSol
@@ -175,7 +176,7 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Refresh token data and currency rates based on updateFrequency
-	updateFrequency := 5 * time.Minute
+	updateFrequency := 60 * time.Minute
 	ticker := time.NewTicker(updateFrequency)
 	quit := make(chan struct{})
 	go func() {

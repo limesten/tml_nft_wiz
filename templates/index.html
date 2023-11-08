@@ -6,26 +6,37 @@
         <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body>
-    {{range .Tokens}}
-    <p>Symbol: {{.Symbol}}</p>
-    <p>Floor price: {{.FloorPrice}}</p>
-    <p>Listed count: {{.ListedCount}}</p>
-    {{end}}
-
-    <p>Total price in SOL: {{.TotalPriceSol}}</p>
-
-    <ul>
-        {{ range $currency, $price := .Prices }}
-        <li id={{ $currency }} class="price hidden">{{ $currency }}: {{ $price }}</li>
+<body style="background-color: #0f172a" class="text-slate-200">
+    <div class="container mx-auto text-center">
+        <h1 class="text-2xl my-2">Tomorrowland NFT Prices</h1>
+        <div class="mb-2">
+            <p>All 3 NFTs below are required to get the main perks such as access to the NFT pre-sale.</p>
+            <p>Learn more about the tomorrowland NFT on the official website: <a href="https://nft.tomorrowland.com/" target="_blank">Click Here</a></p>
+        </div>
+         
+        {{range .Tokens}}
+        <div class="mb-2">
+            <p>Symbol: {{.Symbol}}</p>
+            <p>Floor price: {{.FloorPrice}}</p>
+            <p>Listed count: {{.ListedCount}}</p>
+        </div>
         {{end}}
-    </ul>
-    
-    <select id="currencySelect">
-        {{ range $currency, $price := .Prices }}
-        <option>{{ $currency }}</option>
-        {{ end }}
-    </select>
+
+        <h2 class="text-lg">Total prices for all 3 parts</h2>
+        <ul>
+            <li>SOL: {{ .TotalPriceSol }}</li>
+            {{ range $currency, $price := .Prices }}
+            <li id={{ $currency }} class="price hidden">{{ $currency }}: {{ $price }}</li>
+            {{end}}
+        </ul>
+        
+        <label for="currencySelect">Selected currency:</label>
+        <select id="currencySelect" style="background-color: #0f172a" class="text-slate-200">
+            {{ range $currency, $price := .Prices }}
+            <option>{{ $currency }}</option>
+            {{ end }}
+        </select>
+    </div>
 
     <script src="/static/js/script.js" type="text/javascript"></script>
 </body>
