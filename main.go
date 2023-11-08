@@ -170,7 +170,9 @@ func main() {
 	apiCfg.getTokenData()
 	apiCfg.getCurrencyRates()
 
+	fs := http.FileServer(http.Dir("./static/"))
 	http.HandleFunc("/", apiCfg.handlerGetData)
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Refresh token data and currency rates based on updateFrequency
 	updateFrequency := 5 * time.Minute
