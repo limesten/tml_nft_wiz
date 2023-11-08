@@ -33,7 +33,7 @@ type ExchangeRateResponse struct {
 type apiConfig struct {
 	CurrencyRates  map[string]float64
 	Prices         map[string]float64
-	Tokens         []TokenData
+	Tokens         map[string]TokenData
 	RatesUpdatedAt time.Time
 	TotalPriceSol  float64
 	fxRatesApiKey  string
@@ -89,9 +89,11 @@ func (cfg *apiConfig) getCurrencyRates() {
 func (cfg *apiConfig) getTokenData() {
 	tokenSymbols := []string{"tomorrowland_winter", "tomorrowland_love_unity", "the_reflection_of_love"}
 	var totalPriceSol float64
-	// make better solution than just emptying the Tokens slice
-	// maybe a map instead, see if token exists, if exists - update, else append
-	cfg.Tokens = []TokenData{}
+
+	if cfg.Tokens == nil {
+		cfg.Tokens = make(map[string]TokenData)
+	}
+
 	for _, tokenSymbol := range tokenSymbols {
 		url := fmt.Sprintf("https://api-mainnet.magiceden.dev/v2/collections/%s/stats", tokenSymbol)
 		req, _ := http.NewRequest("GET", url, nil)
@@ -99,6 +101,7 @@ func (cfg *apiConfig) getTokenData() {
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			fmt.Printf("Api req err: %s", err)
+			return
 		}
 		defer res.Body.Close()
 
@@ -107,12 +110,13 @@ func (cfg *apiConfig) getTokenData() {
 		err = json.Unmarshal(body, &tokenData)
 		if err != nil {
 			fmt.Printf("Err on json urmarshal: %s", err)
+			return
 		}
 
 		tokenData.FloorPrice = tokenData.FloorPrice / 1000000000
 		totalPriceSol += tokenData.FloorPrice
 
-		cfg.Tokens = append(cfg.Tokens, tokenData)
+		cfg.Tokens[tokenData.Symbol] = tokenData
 	}
 	cfg.TotalPriceSol = totalPriceSol
 }
@@ -128,12 +132,13 @@ func getTotalPricePerCurrency(currencyRates map[string]float64, totalPriceSol fl
 func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 	tmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("HTML template parsing error: %s", err)
+		return
 	}
 
 	data := struct {
 		CurrencyRates  map[string]float64
-		Tokens         []TokenData
+		Tokens         map[string]TokenData
 		Prices         map[string]float64
 		RatesUpdatedAt time.Time
 		TotalPriceSol  float64
@@ -164,8 +169,9 @@ func main() {
 
 	http.HandleFunc("/", apiCfg.handlerGetData)
 
-	// Refresh data every hour
-	ticker := time.NewTicker(5 * time.Minute)
+	// Refresh token data and currency rates based on updateFrequency
+	updateFrequency := 5 * time.Minute
+	ticker := time.NewTicker(updateFrequency)
 	quit := make(chan struct{})
 	go func() {
 		for {
