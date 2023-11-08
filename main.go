@@ -133,6 +133,7 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 	tmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
 		fmt.Printf("HTML template parsing error: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -153,6 +154,8 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 	err = tmpl.Execute(w, data)
 	if err != nil {
 		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
