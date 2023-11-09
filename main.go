@@ -6,11 +6,13 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/joho/godotenv")
+	"github.com/joho/godotenv"
+)
 
 type TokenData struct {
 	Symbol       string  `json:"symbol"`
@@ -34,7 +36,7 @@ type apiConfig struct {
 	CurrencyRates  map[string]float64
 	Prices         map[string]float64
 	Tokens         map[string]TokenData
-	RatesUpdatedAt time.Time
+	RatesUpdatedAt string
 	TotalPriceSol  float64
 	fxRatesApiKey  string
 }
@@ -78,11 +80,13 @@ func (cfg *apiConfig) getCurrencyRates() {
 		fmt.Printf("Unmarshal error: %s", err)
 	}
 
-	// Todo: add SOL price to the prices map
 	prices := make(map[string]float64)
 	for currency, rate := range exchangeRateResponse.Rates {
-		prices[currency] = rate * cfg.TotalPriceSol
+		price := rate * cfg.TotalPriceSol
+		prices[currency] = math.Round(price)
 	}
+	timeStamp := time.Unix(exchangeRateResponse.Timestamp, 0)
+	cfg.RatesUpdatedAt = timeStamp.Format(time.RFC822)
 	cfg.CurrencyRates = exchangeRateResponse.Rates
 	cfg.Prices = prices
 }
@@ -114,12 +118,14 @@ func (cfg *apiConfig) getTokenData() {
 			return
 		}
 
-		tokenData.FloorPrice = tokenData.FloorPrice / 1000000000
+		solFloorPrice := tokenData.FloorPrice / 1000000000
+
+		tokenData.FloorPrice = math.Round(solFloorPrice * 100) / 100
 		totalPriceSol += tokenData.FloorPrice
 
 		cfg.Tokens[tokenData.Symbol] = tokenData
 	}
-	cfg.TotalPriceSol = totalPriceSol
+	cfg.TotalPriceSol = math.Round(totalPriceSol * 100) / 100
 }
 
 func getTotalPricePerCurrency(currencyRates map[string]float64, totalPriceSol float64) map[string]float64 {
@@ -142,7 +148,7 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 		CurrencyRates  map[string]float64
 		Tokens         map[string]TokenData
 		Prices         map[string]float64
-		RatesUpdatedAt time.Time
+		RatesUpdatedAt string
 		TotalPriceSol  float64
 	}{
 		CurrencyRates:  cfg.CurrencyRates,
