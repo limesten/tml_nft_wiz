@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 type TokenData struct {
@@ -119,21 +117,16 @@ func (cfg *apiConfig) getTokenData() {
 		}
 
 		solFloorPrice := tokenData.FloorPrice / 1000000000
+		takerFee := 1.025
+		solFloorPrice = solFloorPrice * takerFee
 
-		tokenData.FloorPrice = math.Round(solFloorPrice * 100) / 100
+		tokenData.FloorPrice = math.Floor(solFloorPrice*100) / 100
+
 		totalPriceSol += tokenData.FloorPrice
 
 		cfg.Tokens[tokenData.Symbol] = tokenData
 	}
-	cfg.TotalPriceSol = math.Round(totalPriceSol * 100) / 100
-}
-
-func getTotalPricePerCurrency(currencyRates map[string]float64, totalPriceSol float64) map[string]float64 {
-	prices := make(map[string]float64)
-	for currency, rate := range currencyRates {
-		prices[currency] = rate * totalPriceSol
-	}
-	return prices
+	cfg.TotalPriceSol = math.Round(totalPriceSol*100) / 100
 }
 
 func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
@@ -167,10 +160,6 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading env vars: %s\n", err)
-	}
 	apiCfg := apiConfig{}
 	fxRatesApiKey = os.Getenv("FX_RATES_API_KEY")
 	apiCfg.fxRatesApiKey = fxRatesApiKey
@@ -182,23 +171,24 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Refresh token data and currency rates based on updateFrequency
-	updateFrequency := 60 * time.Minute
+	updateFrequency := 10 * time.Minute
 	ticker := time.NewTicker(updateFrequency)
 	quit := make(chan struct{})
 	go func() {
 		for {
 			select {
-			case <- ticker.C:
-			apiCfg.getTokenData()
-			apiCfg.getCurrencyRates()
-			case <- quit:
-			ticker.Stop()
-			return
+			case <-ticker.C:
+				apiCfg.getTokenData()
+				apiCfg.getCurrencyRates()
+			case <-quit:
+				ticker.Stop()
+				return
 			}
 		}
 	}()
 
-	addr := "localhost:42069"
-	log.Printf("listening to %s\n", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	port := "8080"
+	log.Printf("listening on %s\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
+
 }
