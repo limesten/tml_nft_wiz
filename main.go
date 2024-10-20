@@ -166,12 +166,15 @@ func (cfg *apiConfig) getTokenData() {
 
 func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 
-	// todo: adjust token prices also
 	takerFee := 1.025
-	adjustedPrices := make(map[string]float64)
 
 	for currency, price := range cfg.Prices {
-		adjustedPrices[currency] = price * takerFee
+		cfg.Prices[currency] = price * takerFee
+	}
+
+	for token, tokenData := range cfg.Tokens {
+		tokenData.FloorPrice *= takerFee
+		cfg.Tokens[token] = tokenData
 	}
 
 	tmpl, err := template.ParseFiles("templates/index.html")
@@ -189,7 +192,7 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 		TotalPriceSol  float64
 	}{
 		CurrencyRates:  cfg.CurrencyRates,
-		Prices:         adjustedPrices,
+		Prices:         cfg.Prices,
 		Tokens:         cfg.Tokens,
 		RatesUpdatedAt: cfg.RatesUpdatedAt,
 		TotalPriceSol:  cfg.TotalPriceSol,
