@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -10,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type TokenData struct {
@@ -37,6 +40,7 @@ type apiConfig struct {
 	RatesUpdatedAt string
 	TotalPriceSol  float64
 	fxRatesApiKey  string
+	DB             *sql.DB
 }
 
 var fxRatesApiKey string
@@ -82,6 +86,19 @@ func (cfg *apiConfig) getCurrencyRates() {
 	for currency, rate := range exchangeRateResponse.Rates {
 		price := rate * cfg.TotalPriceSol
 		prices[currency] = math.Round(price)
+
+		utcTime := time.Now().UTC()
+		formattedUtcTimeStamp := utcTime.Format("2006-01-02 15:04:05")
+		formattedUtcDate := utcTime.Format("2006-01-02")
+
+		sqlStmt := `
+            insert or replace into exchange_rates (id, currency, timestamp, sol_exchange_rate) values
+            ((select id from exchange_rates where currency = ? and date(timestamp) = ?), ?, ?, ?);
+        `
+		_, err = cfg.DB.Exec(sqlStmt, currency, formattedUtcDate, currency, formattedUtcTimeStamp, rate)
+		if err != nil {
+			log.Printf("Failed to update rates for %s, error: %v", currency, err)
+		}
 	}
 	timeStamp := time.Unix(exchangeRateResponse.Timestamp, 0)
 	cfg.RatesUpdatedAt = timeStamp.Format(time.RFC822)
@@ -117,19 +134,46 @@ func (cfg *apiConfig) getTokenData() {
 		}
 
 		solFloorPrice := tokenData.FloorPrice / 1000000000
-		takerFee := 1.025
-		solFloorPrice = solFloorPrice * takerFee
 
 		tokenData.FloorPrice = math.Floor(solFloorPrice*100) / 100
 
 		totalPriceSol += tokenData.FloorPrice
 
 		cfg.Tokens[tokenData.Symbol] = tokenData
+
+		utcTime := time.Now().UTC()
+		formattedUtcTimeStamp := utcTime.Format("2006-01-02 15:04:05")
+		formattedUtcDate := utcTime.Format("2006-01-02")
+
+		sqlStmt := `
+            insert or replace into sol_rates (id, token, timestamp, sol) values
+            ((select id from sol_rates where token = ? and date(timestamp) = ?), ?, ?, ?);
+        `
+		_, err = cfg.DB.Exec(
+			sqlStmt,
+			tokenData.Symbol,
+			formattedUtcDate,
+			tokenData.Symbol,
+			formattedUtcTimeStamp,
+			tokenData.FloorPrice,
+		)
+		if err != nil {
+			log.Printf("Failed to update rates for %s, error: %v", tokenData.Symbol, err)
+		}
 	}
 	cfg.TotalPriceSol = math.Round(totalPriceSol*100) / 100
 }
 
 func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
+
+	// todo: adjust token prices also
+	takerFee := 1.025
+	adjustedPrices := make(map[string]float64)
+
+	for currency, price := range cfg.Prices {
+		adjustedPrices[currency] = price * takerFee
+	}
+
 	tmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
 		fmt.Printf("HTML template parsing error: %s", err)
@@ -145,7 +189,7 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 		TotalPriceSol  float64
 	}{
 		CurrencyRates:  cfg.CurrencyRates,
-		Prices:         cfg.Prices,
+		Prices:         adjustedPrices,
 		Tokens:         cfg.Tokens,
 		RatesUpdatedAt: cfg.RatesUpdatedAt,
 		TotalPriceSol:  cfg.TotalPriceSol,
@@ -161,6 +205,14 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	apiCfg := apiConfig{}
+
+	db, err := sql.Open("sqlite3", "./tmlwiz.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	apiCfg.DB = db
+
 	fxRatesApiKey = os.Getenv("FX_RATES_API_KEY")
 	apiCfg.fxRatesApiKey = fxRatesApiKey
 	apiCfg.getTokenData()
