@@ -33,6 +33,18 @@ type ExchangeRateResponse struct {
 	Rates     map[string]float64 `json:"rates"`
 }
 
+type TokenDataHistory struct {
+	ID         int64
+	Token      string
+	Timestamp  string
+	FloorPrice float64
+}
+
+type TokenDataHistoryAll struct {
+	Dates       []string
+	FloorPrices []float64
+}
+
 type apiConfig struct {
 	CurrencyRates  map[string]float64
 	Prices         map[string]float64
@@ -168,13 +180,17 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 
 	takerFee := 1.025
 
+	adjustedPrices := make(map[string]float64)
 	for currency, price := range cfg.Prices {
-		cfg.Prices[currency] = price * takerFee
+		adjustedPrices[currency] = math.Round((price*takerFee)*1000) / 1000
 	}
 
+	adjustedTokens := make(map[string]TokenData)
 	for token, tokenData := range cfg.Tokens {
-		tokenData.FloorPrice *= takerFee
-		cfg.Tokens[token] = tokenData
+		adjustedToken := tokenData
+		adjustedToken.FloorPrice = tokenData.FloorPrice * takerFee
+		adjustedToken.FloorPrice = math.Round(adjustedToken.FloorPrice*1000) / 1000
+		adjustedTokens[token] = adjustedToken
 	}
 
 	tmpl, err := template.ParseFiles("templates/index.html")
@@ -184,18 +200,84 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	priceHistory := make(map[string]TokenDataHistoryAll)
+	// Prepared individual token history
+	/*
+		sqlStmt := "select id, token, timestamp, sol from sol_rates"
+		rows, err := cfg.DB.Query(sqlStmt)
+		if err != nil {
+			log.Printf("Failed to fetch sol price history from db. Err: %v\n", err)
+		} else {
+			for rows.Next() {
+				var token TokenDataHistory
+				err = rows.Scan(&token.ID, &token.Token, &token.Timestamp, &token.FloorPrice)
+				if err != nil {
+					log.Printf("Failed to parse token data history from db. Err: %v\n", err)
+				} else {
+					date := token.Timestamp[:10]
+
+					dates := priceHistory[token.Token].Dates
+					floorPrices := priceHistory[token.Token].FloorPrices
+
+					dates = append(dates, date)
+					floorPrices = append(floorPrices, token.FloorPrice)
+
+					data := TokenDataHistoryAll{
+						Dates:       dates,
+						FloorPrices: floorPrices,
+					}
+					priceHistory[token.Token] = data
+				}
+			}
+		}
+	*/
+
+	dates := []string{}
+	prices := []float64{}
+	sqlStmt := "select date, sol from v_combined_sol_rates"
+	rows, err := cfg.DB.Query(sqlStmt)
+	if err != nil {
+		log.Printf("Failed to fetch sol price history from db. Err: %v\n", err)
+	} else {
+		var date string
+		var price float64
+		for rows.Next() {
+			err = rows.Scan(&date, &price)
+			if err != nil {
+				log.Printf("Failed to parse token data history from db. Err: %v\n", err)
+			} else {
+				dates = append(dates, date)
+				prices = append(prices, price)
+			}
+		}
+	}
+
+	combinedPriceHistory := TokenDataHistoryAll{
+		Dates:       dates,
+		FloorPrices: prices,
+	}
+
+	priceHistory["combined"] = combinedPriceHistory
+
+	priceHistoryJSON, err := json.Marshal(priceHistory)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	data := struct {
-		CurrencyRates  map[string]float64
-		Tokens         map[string]TokenData
-		Prices         map[string]float64
-		RatesUpdatedAt string
-		TotalPriceSol  float64
+		CurrencyRates    map[string]float64
+		Tokens           map[string]TokenData
+		Prices           map[string]float64
+		RatesUpdatedAt   string
+		TotalPriceSol    float64
+		PriceHistoryJSON string
 	}{
-		CurrencyRates:  cfg.CurrencyRates,
-		Prices:         cfg.Prices,
-		Tokens:         cfg.Tokens,
-		RatesUpdatedAt: cfg.RatesUpdatedAt,
-		TotalPriceSol:  cfg.TotalPriceSol,
+		CurrencyRates:    cfg.CurrencyRates,
+		Prices:           adjustedPrices,
+		Tokens:           adjustedTokens,
+		RatesUpdatedAt:   cfg.RatesUpdatedAt,
+		TotalPriceSol:    cfg.TotalPriceSol,
+		PriceHistoryJSON: string(priceHistoryJSON),
 	}
 
 	err = tmpl.Execute(w, data)

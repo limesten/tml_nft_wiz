@@ -7,30 +7,32 @@
             content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
         />
         <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     </head>
 
     <body
         style="background-color: #0f172a"
         class="text-slate-200 flex flex-col min-h-screen"
     >
-        <div class="container mx-auto">
-            <div class="flex justify-center">
-                <div class="p-4">
-                    <img src="/static/img/white_cat_wizard.png" alt="" />
-                </div>
-                <div class="p-4">
-                    <h1 class="text-2xl my-2">✨ Tomorrowland NFT Wizard ✨</h1>
-                    <div class="mb-2">
+        <div class="container mx-auto max-w-[800px]">
+            <div
+                class="relative bg-[url('/static/img/header.png')] bg-cover aspect-[32/15]"
+            >
+                <div
+                    class="absolute w-3/6 right-[25px] top-[35px] sm:top-[70px] sm:right-[45px]"
+                >
+                    <h1 class="text-xs sm:text-xl">✨ Tomorrowland NFT Wizard ✨</h1>
+                    <div class="hidden sm:block sm:text-lg mb-2">
                         <p>
-                            Learn more about the tomorrowland NFT on the official website:
+                            Learn more on the official tomorrowland website:
                             <a href="https://nft.tomorrowland.com/" target="_blank"
                                 ><u>Click Here</u></a
                             >
                         </p>
                     </div>
 
-                    <h2 class="text-lg mt-5">Total prices for all 3 parts</h2>
-                    <ul>
+                    <h2 class="text-xs sm:text-lg mt-2">Total prices for all 3 parts</h2>
+                    <ul class="text-xs sm:text-lg">
                         <li>SOL: {{ .TotalPriceSol }}</li>
                         {{ range $currency, $price := .Prices }}
                         <li id="{{ $currency }}" class="price hidden">
@@ -39,35 +41,102 @@
                         {{end}}
                     </ul>
 
-                    <label for="currencySelect">Selected currency:</label>
+                    <label for="currencySelect" class="text-xs sm:text-lg"
+                        >Selected currency:</label
+                    >
                     <select
                         id="currencySelect"
                         style="background-color: #0f172a"
-                        class="text-slate-200"
+                        class="text-slate-200 text-xs sm:text-lg"
                     >
                         {{ range $currency, $price := .Prices }}
                         <option>{{ $currency }}</option>
                         {{ end }}
                     </select>
-                    <p class="text-sm"><i>Data updated at: {{ .RatesUpdatedAt }}</i></p>
-                </div>
-            </div>
-            <div class="flex flex-wrap justify-center mt-2">
-                {{range .Tokens}}
-                <div class="my-2 mx-3 p-5 w-full text-center">
-                    <p>
-                        Token:
-                        <a
-                            href="https://magiceden.io/marketplace/{{ .Symbol }}"
-                            target="_blank"
-                            ><u>{{.Symbol}}</u></a
-                        >
+                    <p class="text-xs sm:text-md">
+                        <i>Updated at: {{ .RatesUpdatedAt }}</i>
                     </p>
-                    <p>Floor price: {{.FloorPrice}} SOL</p>
-                    <p>Listed count: {{.ListedCount}}</p>
                 </div>
-                {{end}}
             </div>
+
+            <div class="p-4">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th class="py-2 px-4 border-b">Token</th>
+                            <th class="py-2 px-4 border-b">Floor Price</th>
+                            <th class="py-2 px-4 border-b">Listed Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Tokens}}
+                        <tr>
+                            <td class="py-2 px-4 border-b text-center">
+                                <a
+                                    href="https://magiceden.io/marketplace/{{ .Symbol }}"
+                                    target="_blank"
+                                >
+                                    <u>{{.Symbol}}</u>
+                                </a>
+                            </td>
+                            <td class="py-2 px-4 border-b text-center">
+                                {{.FloorPrice}} SOL
+                            </td>
+                            <td class="py-2 px-4 border-b text-center">
+                                {{.ListedCount}}
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+
+            <canvas id="floorChart"></canvas>
+            <script>
+                let chartDataString = "{{ .PriceHistoryJSON }}";
+                let chartData = JSON.parse(chartDataString);
+                const labels = chartData.combined.Dates;
+                const data = chartData.combined.FloorPrices;
+
+                const ctx = document.getElementById("floorChart").getContext("2d");
+
+                const floorChart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: "Floor Prices",
+                                data: data,
+                                borderColor: "rgba(75, 192, 192, 1)",
+                                backgroundColor: "rgba(75, 192, 192, 0.2)",
+                                borderWidth: 2,
+                            },
+                        ],
+                    },
+                    options: {
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: "white",
+                                },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    color: "white",
+                                },
+                            },
+                            y: {
+                                ticks: {
+                                    color: "white",
+                                },
+                            },
+                        },
+                    },
+                });
+            </script>
         </div>
 
         <script src="/static/js/script.js" type="text/javascript"></script>
