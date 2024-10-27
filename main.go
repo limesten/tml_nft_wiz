@@ -21,6 +21,7 @@ type TokenData struct {
 	ListedCount  int     `json:"listedCount"`
 	AvgPrice24Hr float64 `json:"avgPrice24hr"`
 	VolumeAll    float64 `json:"volumeAll"`
+	FiatPrices   map[string]float64
 }
 
 type ExchangeRateResponse struct {
@@ -112,6 +113,17 @@ func (cfg *apiConfig) getCurrencyRates() {
 			log.Printf("Failed to update rates for %s, error: %v", currency, err)
 		}
 	}
+
+	for token, tokenData := range cfg.Tokens {
+		tokenDataTemp := tokenData
+		tempFiatPrices := make(map[string]float64)
+		for currency, rate := range exchangeRateResponse.Rates {
+			tempFiatPrices[currency] = tokenData.FloorPrice * rate
+			tokenDataTemp.FiatPrices = tempFiatPrices
+		}
+		cfg.Tokens[token] = tokenDataTemp
+	}
+
 	timeStamp := time.Unix(exchangeRateResponse.Timestamp, 0)
 	cfg.RatesUpdatedAt = timeStamp.Format(time.RFC822)
 	cfg.CurrencyRates = exchangeRateResponse.Rates

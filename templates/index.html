@@ -35,7 +35,7 @@
                     <ul class="text-xs sm:text-lg">
                         <li>SOL: {{ .TotalPriceSol }}</li>
                         {{ range $currency, $price := .Prices }}
-                        <li id="{{ $currency }}" class="price hidden">
+                        <li id="{{ $currency }}" class="{{ $currency }} price hidden">
                             {{ $currency }}: {{ $price }}
                         </li>
                         {{end}}
@@ -80,7 +80,11 @@
                                 </a>
                             </td>
                             <td class="py-2 px-4 border-b text-center">
-                                {{.FloorPrice}} SOL
+                                {{ range $currency, $price := .FiatPrices }}
+                                <span class="{{ $currency }} hidden price"
+                                    >{{ $currency }}: {{ printf "%.1f" $price }}</span
+                                >
+                                {{ end }}
                             </td>
                             <td class="py-2 px-4 border-b text-center">
                                 {{.ListedCount}}
