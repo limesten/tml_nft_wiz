@@ -97,21 +97,29 @@
 
             <canvas id="floorChart"></canvas>
             <script>
-                let chartDataString = "{{ .PriceHistoryJSON }}";
+                // currency selector
+                const currencySelect = document.getElementById("currencySelect");
+                const selectedOptionElement =
+                    currencySelect.options[currencySelect.selectedIndex];
+                const selectedOption = selectedOptionElement.innerText;
+
+                const targetElements = document.getElementsByClassName(selectedOption);
+                for (const el of targetElements) {
+                    el.classList.remove("hidden");
+                }
+                let chartDataString = "{{ .CombinedPriceHistoryJSON }}";
                 let chartData = JSON.parse(chartDataString);
-                const labels = chartData.combined.Dates;
-                const data = chartData.combined.FloorPrices;
 
                 const ctx = document.getElementById("floorChart").getContext("2d");
 
                 const floorChart = new Chart(ctx, {
                     type: "line",
                     data: {
-                        labels: labels,
+                        labels: chartData.Dates,
                         datasets: [
                             {
                                 label: "Floor Prices",
-                                data: data,
+                                data: chartData.Currencies[selectedOption],
                                 borderColor: "rgba(75, 192, 192, 1)",
                                 backgroundColor: "rgba(75, 192, 192, 0.2)",
                                 borderWidth: 2,
@@ -139,6 +147,25 @@
                             },
                         },
                     },
+                });
+
+                currencySelect.addEventListener("change", function () {
+                    const selectedOptionElement =
+                        currencySelect.options[currencySelect.selectedIndex];
+                    const selectedOption = selectedOptionElement.innerText;
+                    const prices = document.getElementsByClassName("price");
+                    const targetElements =
+                        document.getElementsByClassName(selectedOption);
+                    for (const price of prices) {
+                        price.classList.add("hidden");
+                    }
+                    for (const el of targetElements) {
+                        el.classList.remove("hidden");
+                    }
+
+                    floorChart.data.datasets[0].data =
+                        chartData.Currencies[selectedOption];
+                    floorChart.update();
                 });
             </script>
         </div>
