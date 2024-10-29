@@ -33,9 +33,9 @@
 
                     <h2 class="text-xs sm:text-lg mt-2">Total prices for all 3 parts</h2>
                     <ul class="text-xs sm:text-lg">
-                        <li>SOL: {{ .TotalPriceSol }}</li>
+                        <li class="SOL price hidden">SOL: {{ .TotalPriceSol }}</li>
                         {{ range $currency, $price := .Prices }}
-                        <li id="{{ $currency }}" class="{{ $currency }} price hidden">
+                        <li class="{{ $currency }} price hidden">
                             {{ $currency }}: {{ $price }}
                         </li>
                         {{end}}
@@ -52,6 +52,7 @@
                         {{ range $currency, $price := .Prices }}
                         <option>{{ $currency }}</option>
                         {{ end }}
+                        <option>SOL</option>
                     </select>
                     <p class="text-xs sm:text-md">
                         <i>Updated at: {{ .RatesUpdatedAt }}</i>
@@ -72,12 +73,15 @@
                         {{range .Tokens}}
                         <tr>
                             <td class="py-2 px-4 border-b text-center">
-                                <a
-                                    href="https://magiceden.io/marketplace/{{ .Symbol }}"
-                                    target="_blank"
-                                >
-                                    <u>{{.Symbol}}</u>
-                                </a>
+                                <p>{{.Symbol}}</p>
+                                <p class="text-xs">
+                                    <a
+                                        href="https://magiceden.io/marketplace/{{ .Symbol }}"
+                                        target="_blank"
+                                    >
+                                        <u><i>Link to token on MagicEden</i></u>
+                                    </a>
+                                </p>
                             </td>
                             <td class="py-2 px-4 border-b text-center">
                                 {{ range $currency, $price := .FiatPrices }}
@@ -85,6 +89,7 @@
                                     >{{ $currency }}: {{ printf "%.1f" $price }}</span
                                 >
                                 {{ end }}
+                                <span class="SOL hidden price">{{ .FloorPrice }}</span>
                             </td>
                             <td class="py-2 px-4 border-b text-center">
                                 {{.ListedCount}}
