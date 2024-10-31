@@ -33,10 +33,9 @@
 
                     <h2 class="text-xs sm:text-lg mt-2">Total prices for all 3 parts</h2>
                     <ul class="text-xs sm:text-lg">
-                        <li class="SOL price hidden">SOL: {{ .TotalPriceSol }}</li>
                         {{ range $currency, $price := .Prices }}
                         <li class="{{ $currency }} price hidden">
-                            {{ $currency }}: {{ $price }}
+                            {{ $currency }}: {{ printf "%.2f" $price }}
                         </li>
                         {{end}}
                     </ul>
@@ -52,7 +51,6 @@
                         {{ range $currency, $price := .Prices }}
                         <option>{{ $currency }}</option>
                         {{ end }}
-                        <option>SOL</option>
                     </select>
                     <p class="text-xs sm:text-md">
                         <i>Updated at: {{ .RatesUpdatedAt }}</i>
@@ -71,7 +69,7 @@
                     </thead>
                     <tbody>
                         {{range .Tokens}}
-                        <tr>
+                        <tr class="transition hover:opacity-80 cursor-pointer tokenRow">
                             <td class="py-2 px-4 border-b text-center">
                                 <p>{{.Symbol}}</p>
                                 <p class="text-xs">
@@ -86,10 +84,12 @@
                             <td class="py-2 px-4 border-b text-center">
                                 {{ range $currency, $price := .FiatPrices }}
                                 <span class="{{ $currency }} hidden price"
-                                    >{{ $currency }}: {{ printf "%.1f" $price }}</span
+                                    >{{ $currency }}: {{ printf "%.2f" $price }}</span
                                 >
                                 {{ end }}
-                                <span class="SOL hidden price">{{ .FloorPrice }}</span>
+                                <span class="SOL hidden price"
+                                    >{{ printf "%.2f" .FloorPrice }}</span
+                                >
                             </td>
                             <td class="py-2 px-4 border-b text-center">
                                 {{.ListedCount}}
@@ -102,7 +102,6 @@
 
             <canvas id="floorChart"></canvas>
             <script>
-                // currency selector
                 const currencySelect = document.getElementById("currencySelect");
                 const selectedOptionElement =
                     currencySelect.options[currencySelect.selectedIndex];
@@ -112,8 +111,21 @@
                 for (const el of targetElements) {
                     el.classList.remove("hidden");
                 }
+
+                const tokenRows = document.querySelectorAll(".tokenRow");
+
                 let chartDataString = "{{ .CombinedPriceHistoryJSON }}";
                 let chartData = JSON.parse(chartDataString);
+
+                let tmlWinterChartDataString = "{{ .TmlWinterHistoryJSON }}";
+                let tmlWinterChartData = JSON.parse(tmlWinterChartDataString);
+
+                let tmlReflectionChartDataString =
+                    "{{ .TmlReflectionofLoveHistoryJSON }}";
+                let tmlReflectionChartData = JSON.parse(tmlReflectionChartDataString);
+
+                let tmlLoveUnityChartDataString = "{{ .TmlLoveUnityHistoryJSON }}";
+                let tmlLoveUnityChartData = JSON.parse(tmlLoveUnityChartDataString);
 
                 const ctx = document.getElementById("floorChart").getContext("2d");
 
@@ -172,10 +184,32 @@
                         chartData.Currencies[selectedOption];
                     floorChart.update();
                 });
+
+                tokenRows.forEach((row) => {
+                    row.addEventListener("click", function () {
+                        const tokenNameElement = row.querySelector("p");
+                        const tokenName = tokenNameElement.textContent;
+
+                        if (tokenName == "tomorrowland_winter") {
+                            floorChart.data.labels = tmlWinterChartData.Dates;
+                            floorChart.data.datasets[0].data =
+                                tmlWinterChartData.Currencies[selectedOption];
+                            floorChart.update();
+                        } else if (tokenName == "tomorrowland_love_unity") {
+                            floorChart.data.labels = tmlLoveUnityChartData.Dates;
+                            floorChart.data.datasets[0].data =
+                                tmlLoveUnityChartData.Currencies[selectedOption];
+                            floorChart.update();
+                        } else if (tokenName == "the_reflection_of_love") {
+                            floorChart.data.labels = tmlReflectionChartData.Dates;
+                            floorChart.data.datasets[0].data =
+                                tmlReflectionChartData.Currencies[selectedOption];
+                            floorChart.update();
+                        }
+                    });
+                });
             </script>
         </div>
-
-        <script src="/static/js/script.js" type="text/javascript"></script>
     </body>
 
     <footer class="mt-auto text-center text-xs p-2">

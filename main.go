@@ -34,23 +34,17 @@ type ExchangeRateResponse struct {
 	Rates     map[string]float64 `json:"rates"`
 }
 
-type TokenDataHistory struct {
-	ID         int64
-	Token      string
-	Timestamp  string
-	FloorPrice float64
+type PriceHistoryDate struct {
+	Date  string
+	Token string
+	SOL   float64
+	EUR   float64
+	USD   float64
+	GBP   float64
+	SEK   float64
 }
 
-type CombinedPriceHistoryDate struct {
-	Date string
-	SOL  float64
-	EUR  float64
-	USD  float64
-	GBP  float64
-	SEK  float64
-}
-
-type CombinedPriceHistory struct {
+type PriceHistory struct {
 	Dates      []string
 	Currencies map[string][]float64
 }
@@ -201,6 +195,7 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 
 	takerFee := 1.025
 
+	cfg.Prices["SOL"] = cfg.TotalPriceSol
 	adjustedPrices := make(map[string]float64)
 	for currency, price := range cfg.Prices {
 		adjustedPrices[currency] = math.Round((price*takerFee)*1000) / 1000
@@ -221,45 +216,85 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Prepared individual token history
-	/*
-		sqlStmt := "select id, token, timestamp, sol from sol_rates"
-		rows, err := cfg.DB.Query(sqlStmt)
-		if err != nil {
-			log.Printf("Failed to fetch sol price history from db. Err: %v\n", err)
-		} else {
-			for rows.Next() {
-				var token TokenDataHistory
-				err = rows.Scan(&token.ID, &token.Token, &token.Timestamp, &token.FloorPrice)
-				if err != nil {
-					log.Printf("Failed to parse token data history from db. Err: %v\n", err)
-				} else {
-					date := token.Timestamp[:10]
+	var tmlWinterHistory PriceHistory
+	var tmlLoveUnityHistory PriceHistory
+	var tmlReflectionofLoveHistory PriceHistory
+	sqlStmt := "select date, token, sol, eur, usd, gbp, sek from v_prices_per_date"
+	rows, err := cfg.DB.Query(sqlStmt)
+	if err != nil {
+		log.Printf("Failed to fetch token price history from db. Err: %v\n", err)
+	} else {
+		var row PriceHistoryDate
 
-					dates := priceHistory[token.Token].Dates
-					floorPrices := priceHistory[token.Token].FloorPrices
+		tmlWinterDates := []string{}
+		tmlLoveUnityDates := []string{}
+		tmlReflectionDates := []string{}
+		tmlWinterCurrencies := make(map[string][]float64)
+		tmlLoveUnityCurrencies := make(map[string][]float64)
+		tmlReflectionOfLoveCurrencies := make(map[string][]float64)
 
-					dates = append(dates, date)
-					floorPrices = append(floorPrices, token.FloorPrice)
-
-					data := TokenDataHistoryAll{
-						Dates:       dates,
-						FloorPrices: floorPrices,
-					}
-					priceHistory[token.Token] = data
+		for rows.Next() {
+			err = rows.Scan(&row.Date, &row.Token, &row.SOL, &row.EUR, &row.USD, &row.GBP, &row.SEK)
+			if err != nil {
+				log.Printf("Failed to parse token data history from db. Err: %v\n", err)
+			} else {
+				if row.Token == "tomorrowland_winter" {
+					tmlWinterDates = append(tmlWinterDates, row.Date)
+					tmlWinterCurrencies["SOL"] = append(tmlWinterCurrencies["SOL"], row.SOL)
+					tmlWinterCurrencies["EUR"] = append(tmlWinterCurrencies["EUR"], row.EUR)
+					tmlWinterCurrencies["USD"] = append(tmlWinterCurrencies["USD"], row.USD)
+					tmlWinterCurrencies["GBP"] = append(tmlWinterCurrencies["GBP"], row.GBP)
+					tmlWinterCurrencies["SEK"] = append(tmlWinterCurrencies["SEK"], row.SEK)
+				} else if row.Token == "tomorrowland_love_unity" {
+					tmlLoveUnityDates = append(tmlLoveUnityDates, row.Date)
+					tmlLoveUnityCurrencies["SOL"] = append(tmlLoveUnityCurrencies["SOL"], row.SOL)
+					tmlLoveUnityCurrencies["EUR"] = append(tmlLoveUnityCurrencies["EUR"], row.EUR)
+					tmlLoveUnityCurrencies["USD"] = append(tmlLoveUnityCurrencies["USD"], row.USD)
+					tmlLoveUnityCurrencies["GBP"] = append(tmlLoveUnityCurrencies["GBP"], row.GBP)
+					tmlLoveUnityCurrencies["SEK"] = append(tmlLoveUnityCurrencies["SEK"], row.SEK)
+				} else if row.Token == "the_reflection_of_love" {
+					tmlReflectionDates = append(tmlReflectionDates, row.Date)
+					tmlReflectionOfLoveCurrencies["SOL"] = append(tmlReflectionOfLoveCurrencies["SOL"], row.SOL)
+					tmlReflectionOfLoveCurrencies["EUR"] = append(tmlReflectionOfLoveCurrencies["EUR"], row.EUR)
+					tmlReflectionOfLoveCurrencies["USD"] = append(tmlReflectionOfLoveCurrencies["USD"], row.USD)
+					tmlReflectionOfLoveCurrencies["GBP"] = append(tmlReflectionOfLoveCurrencies["GBP"], row.GBP)
+					tmlReflectionOfLoveCurrencies["SEK"] = append(tmlReflectionOfLoveCurrencies["SEK"], row.SEK)
 				}
 			}
 		}
-	*/
 
-	var combinedPriceHistory CombinedPriceHistory
+		tmlWinterHistory.Dates = tmlWinterDates
+		tmlWinterHistory.Currencies = tmlWinterCurrencies
 
-	sqlStmt := "select date, sol, eur, usd, gbp, sek from v_combined_price_per_date"
-	rows, err := cfg.DB.Query(sqlStmt)
+		tmlLoveUnityHistory.Dates = tmlLoveUnityDates
+		tmlLoveUnityHistory.Currencies = tmlLoveUnityCurrencies
+
+		tmlReflectionofLoveHistory.Dates = tmlReflectionDates
+		tmlReflectionofLoveHistory.Currencies = tmlReflectionOfLoveCurrencies
+	}
+
+	tmlWinterHistoryJSON, err := json.Marshal(tmlWinterHistory)
 	if err != nil {
-		log.Printf("Failed to fetch sol price history from db. Err: %v\n", err)
+		log.Println(err)
+	}
+
+	tmlLoveUnityHistoryJSON, err := json.Marshal(tmlLoveUnityHistory)
+	if err != nil {
+		log.Println(err)
+	}
+	tmlReflectionofLoveHistoryJSON, err := json.Marshal(tmlReflectionofLoveHistory)
+	if err != nil {
+		log.Println(err)
+	}
+
+	var combinedPriceHistory PriceHistory
+
+	sqlStmt = "select date, sol, eur, usd, gbp, sek from v_combined_price_per_date"
+	rows, err = cfg.DB.Query(sqlStmt)
+	if err != nil {
+		log.Printf("Failed to fetch combined price history from db. Err: %v\n", err)
 	} else {
-		var row CombinedPriceHistoryDate
+		var row PriceHistoryDate
 		dates := []string{}
 		currencies := make(map[string][]float64)
 
@@ -286,20 +321,24 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 		fmt.Println(err)
 	}
 
+	// TODO: include data on tml winter nft movements
+
 	data := struct {
-		CurrencyRates            map[string]float64
-		Tokens                   map[string]TokenData
-		Prices                   map[string]float64
-		RatesUpdatedAt           string
-		TotalPriceSol            float64
-		CombinedPriceHistoryJSON string
+		Tokens                         map[string]TokenData
+		Prices                         map[string]float64
+		RatesUpdatedAt                 string
+		CombinedPriceHistoryJSON       string
+		TmlWinterHistoryJSON           string
+		TmlLoveUnityHistoryJSON        string
+		TmlReflectionofLoveHistoryJSON string
 	}{
-		CurrencyRates:            cfg.CurrencyRates,
-		Prices:                   adjustedPrices,
-		Tokens:                   adjustedTokens,
-		RatesUpdatedAt:           cfg.RatesUpdatedAt,
-		TotalPriceSol:            cfg.TotalPriceSol,
-		CombinedPriceHistoryJSON: string(combinedPriceHistoryJSON),
+		Prices:                         adjustedPrices,
+		Tokens:                         adjustedTokens,
+		RatesUpdatedAt:                 cfg.RatesUpdatedAt,
+		CombinedPriceHistoryJSON:       string(combinedPriceHistoryJSON),
+		TmlWinterHistoryJSON:           string(tmlWinterHistoryJSON),
+		TmlLoveUnityHistoryJSON:        string(tmlLoveUnityHistoryJSON),
+		TmlReflectionofLoveHistoryJSON: string(tmlReflectionofLoveHistoryJSON),
 	}
 
 	err = tmpl.Execute(w, data)
