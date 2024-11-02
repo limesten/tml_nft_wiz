@@ -8,214 +8,234 @@
         />
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+        <style>
+            body {
+                background-color: #0f172a;
+                background-image: url("/static/img/bg-pattern.png");
+                background-repeat: repeat;
+                background-size: 250px 250px;
+            }
+            .container {
+                background-color: #0f172a;
+                z-index: 10;
+                position: relative;
+            }
+        </style>
     </head>
 
     <body
         style="background-color: #0f172a"
-        class="text-slate-200 flex flex-col min-h-screen"
+        class="text-slate-200 flex flex-col min-h-screen px-8"
     >
-        <div class="container mx-auto max-w-[800px]">
-            <div
-                class="relative bg-[url('/static/img/header.png')] bg-cover aspect-[32/15]"
-            >
+        <div class="container mx-auto max-w-[800px] border-x flex flex-col flex-1">
+            <div class="px-8 flex-1">
                 <div
-                    class="absolute w-3/6 right-[25px] top-[35px] sm:top-[70px] sm:right-[45px]"
+                    class="relative bg-[url('/static/img/header.png')] bg-cover aspect-[32/15]"
                 >
-                    <h1 class="text-xs sm:text-xl">✨ Tomorrowland NFT Wizard ✨</h1>
-                    <div class="hidden sm:block sm:text-lg mb-2">
-                        <p>
-                            Learn more on the official tomorrowland website:
-                            <a href="https://nft.tomorrowland.com/" target="_blank"
-                                ><u>Click Here</u></a
-                            >
+                    <div
+                        class="absolute w-3/6 right-[25px] top-[35px] sm:top-[70px] sm:right-[45px]"
+                    >
+                        <h1 class="text-xs sm:text-xl">✨ Tomorrowland NFT Wizard ✨</h1>
+                        <div class="hidden sm:block sm:text-lg mb-2">
+                            <p>
+                                Learn more on the official tomorrowland website:
+                                <a href="https://nft.tomorrowland.com/" target="_blank"
+                                    ><u>Click Here</u></a
+                                >
+                            </p>
+                        </div>
+
+                        <h2 class="text-xs sm:text-lg mt-2">
+                            Total prices for all 3 parts
+                        </h2>
+                        <ul class="text-xs sm:text-lg">
+                            {{ range $currency, $price := .Prices }}
+                            <li class="{{ $currency }} price hidden">
+                                {{ $currency }}: {{ printf "%.2f" $price }}
+                            </li>
+                            {{end}}
+                        </ul>
+
+                        <label for="currencySelect" class="text-xs sm:text-lg"
+                            >Selected currency:</label
+                        >
+                        <select
+                            id="currencySelect"
+                            style="background-color: #0f172a"
+                            class="text-slate-200 text-xs sm:text-lg"
+                        >
+                            {{ range $currency, $price := .Prices }}
+                            <option>{{ $currency }}</option>
+                            {{ end }}
+                        </select>
+                        <p class="text-xs sm:text-md">
+                            <i>Updated at: {{ .RatesUpdatedAt }}</i>
                         </p>
                     </div>
-
-                    <h2 class="text-xs sm:text-lg mt-2">Total prices for all 3 parts</h2>
-                    <ul class="text-xs sm:text-lg">
-                        {{ range $currency, $price := .Prices }}
-                        <li class="{{ $currency }} price hidden">
-                            {{ $currency }}: {{ printf "%.2f" $price }}
-                        </li>
-                        {{end}}
-                    </ul>
-
-                    <label for="currencySelect" class="text-xs sm:text-lg"
-                        >Selected currency:</label
-                    >
-                    <select
-                        id="currencySelect"
-                        style="background-color: #0f172a"
-                        class="text-slate-200 text-xs sm:text-lg"
-                    >
-                        {{ range $currency, $price := .Prices }}
-                        <option>{{ $currency }}</option>
-                        {{ end }}
-                    </select>
-                    <p class="text-xs sm:text-md">
-                        <i>Updated at: {{ .RatesUpdatedAt }}</i>
-                    </p>
                 </div>
-            </div>
 
-            <div class="p-4">
-                <table class="min-w-full">
-                    <thead>
-                        <tr>
-                            <th class="py-2 px-4 border-b">Token</th>
-                            <th class="py-2 px-4 border-b">Floor Price</th>
-                            <th class="py-2 px-4 border-b">Listed Count</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{range .Tokens}}
-                        <tr class="transition hover:opacity-80 cursor-pointer tokenRow">
-                            <td class="py-2 px-4 border-b text-center">
-                                <p>{{.Symbol}}</p>
-                                <p class="text-xs">
-                                    <a
-                                        href="https://magiceden.io/marketplace/{{ .Symbol }}"
-                                        target="_blank"
+                <div class="p-4 overflow-y-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b">Token</th>
+                                <th class="py-2 px-4 border-b">Floor Price</th>
+                                <th class="py-2 px-4 border-b">Listed Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Tokens}}
+                            <tr
+                                class="transition hover:opacity-80 cursor-pointer tokenRow"
+                            >
+                                <td class="py-2 px-4 border-b text-center">
+                                    <p>{{.Symbol}}</p>
+                                    <p class="text-xs">
+                                        <a
+                                            href="https://magiceden.io/marketplace/{{ .Symbol }}"
+                                            target="_blank"
+                                            ><u><i>Link to token on MagicEden</i></u></a
+                                        >
+                                    </p>
+                                </td>
+                                <td class="py-2 px-4 border-b text-center">
+                                    {{ range $currency, $price := .FiatPrices }}
+                                    <span class="{{ $currency }} hidden price"
+                                        >{{ $currency }}: {{ printf "%.2f" $price }}</span
                                     >
-                                        <u><i>Link to token on MagicEden</i></u>
-                                    </a>
-                                </p>
-                            </td>
-                            <td class="py-2 px-4 border-b text-center">
-                                {{ range $currency, $price := .FiatPrices }}
-                                <span class="{{ $currency }} hidden price"
-                                    >{{ $currency }}: {{ printf "%.2f" $price }}</span
-                                >
-                                {{ end }}
-                                <span class="SOL hidden price"
-                                    >{{ printf "%.2f" .FloorPrice }}</span
-                                >
-                            </td>
-                            <td class="py-2 px-4 border-b text-center">
-                                {{.ListedCount}}
-                            </td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                </table>
-            </div>
+                                    {{ end }}
+                                    <span class="SOL hidden price"
+                                        >{{ printf "%.2f" .FloorPrice }}</span
+                                    >
+                                </td>
+                                <td class="py-2 px-4 border-b text-center">
+                                    {{.ListedCount}}
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
 
-            <canvas id="floorChart"></canvas>
-            <script>
-                const currencySelect = document.getElementById("currencySelect");
-                const selectedOptionElement =
-                    currencySelect.options[currencySelect.selectedIndex];
-                const selectedOption = selectedOptionElement.innerText;
-
-                const targetElements = document.getElementsByClassName(selectedOption);
-                for (const el of targetElements) {
-                    el.classList.remove("hidden");
-                }
-
-                const tokenRows = document.querySelectorAll(".tokenRow");
-
-                let chartDataString = "{{ .CombinedPriceHistoryJSON }}";
-                let chartData = JSON.parse(chartDataString);
-
-                let tmlWinterChartDataString = "{{ .TmlWinterHistoryJSON }}";
-                let tmlWinterChartData = JSON.parse(tmlWinterChartDataString);
-
-                let tmlReflectionChartDataString =
-                    "{{ .TmlReflectionofLoveHistoryJSON }}";
-                let tmlReflectionChartData = JSON.parse(tmlReflectionChartDataString);
-
-                let tmlLoveUnityChartDataString = "{{ .TmlLoveUnityHistoryJSON }}";
-                let tmlLoveUnityChartData = JSON.parse(tmlLoveUnityChartDataString);
-
-                const ctx = document.getElementById("floorChart").getContext("2d");
-
-                const floorChart = new Chart(ctx, {
-                    type: "line",
-                    data: {
-                        labels: chartData.Dates,
-                        datasets: [
-                            {
-                                label: "Floor Prices",
-                                data: chartData.Currencies[selectedOption],
-                                borderColor: "rgba(75, 192, 192, 1)",
-                                backgroundColor: "rgba(75, 192, 192, 0.2)",
-                                borderWidth: 2,
-                            },
-                        ],
-                    },
-                    options: {
-                        plugins: {
-                            legend: {
-                                labels: {
-                                    color: "white",
-                                },
-                            },
-                        },
-                        scales: {
-                            x: {
-                                ticks: {
-                                    color: "white",
-                                },
-                            },
-                            y: {
-                                ticks: {
-                                    color: "white",
-                                },
-                            },
-                        },
-                    },
-                });
-
-                currencySelect.addEventListener("change", function () {
+                <canvas id="floorChart" class="mt-4"></canvas>
+                <script>
+                    const currencySelect = document.getElementById("currencySelect");
                     const selectedOptionElement =
                         currencySelect.options[currencySelect.selectedIndex];
                     const selectedOption = selectedOptionElement.innerText;
-                    const prices = document.getElementsByClassName("price");
+
                     const targetElements =
                         document.getElementsByClassName(selectedOption);
-                    for (const price of prices) {
-                        price.classList.add("hidden");
-                    }
                     for (const el of targetElements) {
                         el.classList.remove("hidden");
                     }
 
-                    floorChart.data.datasets[0].data =
-                        chartData.Currencies[selectedOption];
-                    floorChart.update();
-                });
+                    const tokenRows = document.querySelectorAll(".tokenRow");
 
-                tokenRows.forEach((row) => {
-                    row.addEventListener("click", function () {
-                        const tokenNameElement = row.querySelector("p");
-                        const tokenName = tokenNameElement.textContent;
+                    let chartDataString = "{{ .CombinedPriceHistoryJSON }}";
+                    let chartData = JSON.parse(chartDataString);
 
-                        if (tokenName == "tomorrowland_winter") {
-                            floorChart.data.labels = tmlWinterChartData.Dates;
-                            floorChart.data.datasets[0].data =
-                                tmlWinterChartData.Currencies[selectedOption];
-                            floorChart.update();
-                        } else if (tokenName == "tomorrowland_love_unity") {
-                            floorChart.data.labels = tmlLoveUnityChartData.Dates;
-                            floorChart.data.datasets[0].data =
-                                tmlLoveUnityChartData.Currencies[selectedOption];
-                            floorChart.update();
-                        } else if (tokenName == "the_reflection_of_love") {
-                            floorChart.data.labels = tmlReflectionChartData.Dates;
-                            floorChart.data.datasets[0].data =
-                                tmlReflectionChartData.Currencies[selectedOption];
-                            floorChart.update();
-                        }
+                    let tmlWinterChartDataString = "{{ .TmlWinterHistoryJSON }}";
+                    let tmlWinterChartData = JSON.parse(tmlWinterChartDataString);
+
+                    let tmlReflectionChartDataString =
+                        "{{ .TmlReflectionofLoveHistoryJSON }}";
+                    let tmlReflectionChartData = JSON.parse(tmlReflectionChartDataString);
+
+                    let tmlLoveUnityChartDataString = "{{ .TmlLoveUnityHistoryJSON }}";
+                    let tmlLoveUnityChartData = JSON.parse(tmlLoveUnityChartDataString);
+
+                    const ctx = document.getElementById("floorChart").getContext("2d");
+
+                    const floorChart = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels: chartData.Dates,
+                            datasets: [
+                                {
+                                    label: "Floor Prices",
+                                    data: chartData.Currencies[selectedOption],
+                                    borderColor: "rgba(75, 192, 192, 1)",
+                                    backgroundColor: "rgba(75, 192, 192, 0.2)",
+                                    borderWidth: 2,
+                                },
+                            ],
+                        },
+                        options: {
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: "white",
+                                    },
+                                },
+                            },
+                            scales: {
+                                x: {
+                                    ticks: {
+                                        color: "white",
+                                    },
+                                },
+                                y: {
+                                    ticks: {
+                                        color: "white",
+                                    },
+                                },
+                            },
+                        },
                     });
-                });
-            </script>
+
+                    currencySelect.addEventListener("change", function () {
+                        const selectedOptionElement =
+                            currencySelect.options[currencySelect.selectedIndex];
+                        const selectedOption = selectedOptionElement.innerText;
+                        const prices = document.getElementsByClassName("price");
+                        const targetElements =
+                            document.getElementsByClassName(selectedOption);
+                        for (const price of prices) {
+                            price.classList.add("hidden");
+                        }
+                        for (const el of targetElements) {
+                            el.classList.remove("hidden");
+                        }
+
+                        floorChart.data.datasets[0].data =
+                            chartData.Currencies[selectedOption];
+                        floorChart.update();
+                    });
+
+                    tokenRows.forEach((row) => {
+                        row.addEventListener("click", function () {
+                            const tokenNameElement = row.querySelector("p");
+                            const tokenName = tokenNameElement.textContent;
+
+                            if (tokenName == "tomorrowland_winter") {
+                                floorChart.data.labels = tmlWinterChartData.Dates;
+                                floorChart.data.datasets[0].data =
+                                    tmlWinterChartData.Currencies[selectedOption];
+                                floorChart.update();
+                            } else if (tokenName == "tomorrowland_love_unity") {
+                                floorChart.data.labels = tmlLoveUnityChartData.Dates;
+                                floorChart.data.datasets[0].data =
+                                    tmlLoveUnityChartData.Currencies[selectedOption];
+                                floorChart.update();
+                            } else if (tokenName == "the_reflection_of_love") {
+                                floorChart.data.labels = tmlReflectionChartData.Dates;
+                                floorChart.data.datasets[0].data =
+                                    tmlReflectionChartData.Currencies[selectedOption];
+                                floorChart.update();
+                            }
+                        });
+                    });
+                </script>
+            </div>
+
+            <footer class="p-2 text-center text-xs">
+                Token data from
+                <a href="https://magiceden.io/" target="_blank"><u>Magic Eden</u></a
+                >, Currency data from
+                <a href="https://fxratesapi.com/" target="_blank"><u>FX Rates API</u></a>
+            </footer>
         </div>
     </body>
-
-    <footer class="mt-auto text-center text-xs p-2">
-        Token data from
-        <a href="https://magiceden.io/" target="_blank"><u>Magic Eden</u></a
-        >, Currency data from
-        <a href="https://fxratesapi.com/" target="_blank"><u>FX Rates API</u></a>
-    </footer>
 </html>

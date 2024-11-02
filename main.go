@@ -321,8 +321,6 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 		fmt.Println(err)
 	}
 
-	// TODO: include data on tml winter nft movements
-
 	data := struct {
 		Tokens                         map[string]TokenData
 		Prices                         map[string]float64
