@@ -203,6 +203,9 @@ func (cfg *apiConfig) handlerGetData(w http.ResponseWriter, req *http.Request) {
 
 	adjustedTokens := make(map[string]TokenData)
 	for token, tokenData := range cfg.Tokens {
+		if tokenData.Symbol == "" {
+			continue
+		}
 		adjustedToken := tokenData
 		adjustedToken.FloorPrice = tokenData.FloorPrice * takerFee
 		adjustedToken.FloorPrice = math.Round(adjustedToken.FloorPrice*1000) / 1000
